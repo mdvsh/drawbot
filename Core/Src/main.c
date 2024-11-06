@@ -57,13 +57,6 @@ static void MX_SPI1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-HX8357_HandleTypeDef display = {
-    .hspi = &hspi1,
-    .cs_port = GPIOD,
-    .cs_pin = GPIO_PIN_14,
-    .dc_port = GPIOD,
-    .dc_pin = GPIO_PIN_15
-};
 /* USER CODE END 0 */
 
 /**
@@ -98,7 +91,20 @@ int main(void)
   MX_SPI1_Init();
 
   /* USER CODE BEGIN 2 */
-  HX8357_Init(&display);
+  HX8357_HandleTypeDef display = {
+      .hspi = &hspi1,
+      .cs_port = GPIOC,
+      .cs_pin = GPIO_PIN_6,
+      .dc_port = GPIOC,
+      .dc_pin = GPIO_PIN_8,
+      .orientation = HX8357_LANDSCAPE,
+      .use_dma = false  // Disable DMA for debugging
+  };
+
+  if (HX8357_Init(&display) != HX8357_OK) {
+      Error_Handler();
+  }
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -106,7 +112,8 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+      HX8357_DebugTest(&display);
+      HAL_Delay(1000);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
