@@ -1,11 +1,8 @@
 # STM32CubeIDE specific directories
-.settings/
-Debug/
-Release/
-[Dd]ebug/
-[Rr]elease/
+/Debug/
+/Release/
 
-# Build results
+# Build artifacts
 *.o
 *.d
 *.eep
@@ -18,42 +15,16 @@ Release/
 *.su
 *.cyclo
 
-# STM32CubeIDE specific files
+# IDE specific files (regenerated on import)
 .project
 .cproject
 .mxproject
 *.launch
+.settings/
 .metadata/
 *.ld
-# Prerequisites
-*.d
 
-# Object files
-*.o
-
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
-
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
-
-# Executables
-*.exe
-*.out
-*.app
-
-# IDE specific files
-.idea/
-.vscode/
-*.iml
-
-# Operating System specific files
+# System specific
 .DS_Store
 .DS_Store?
 ._*
