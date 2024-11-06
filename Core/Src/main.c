@@ -93,10 +93,10 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HX8357_HandleTypeDef display = {
       .hspi = &hspi1,
-      .cs_port = GPIOC,
-      .cs_pin = GPIO_PIN_6,
-      .dc_port = GPIOC,
-      .dc_pin = GPIO_PIN_8,
+      .cs_port = GPIOD,
+      .cs_pin = GPIO_PIN_14,
+      .dc_port = GPIOD,
+      .dc_pin = GPIO_PIN_15,
       .orientation = HX8357_LANDSCAPE,
       .use_dma = false  // Disable DMA for debugging
   };
@@ -112,8 +112,14 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-      HX8357_DebugTest(&display);
-      HAL_Delay(1000);
+//      HX8357_DebugTest(&display);
+      for(uint16_t x = 0; x < display.width; x += 40) {
+          for(uint16_t y = 0; y < display.height; y += 40) {
+              HX8357_FillRect(&display, x, y, 40, 40,
+                  ((x/40 + y/40) % 2) ? WHITE : BLACK);
+          }
+      }
+      HAL_Delay(100000);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
