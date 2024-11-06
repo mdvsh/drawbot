@@ -7,6 +7,11 @@
 
 #include "hx8357_stm32.h"
 #include <string.h>
+#include <math.h>
+
+#ifndef min
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
 
 #define SWAP_UINT16(a, b) { uint16_t t = a; a = b; b = t; }
 #define MIN(a,b) ((a)<(b)?(a):(b))
@@ -178,7 +183,7 @@ static HX8357_Status HX8357_SetWindow(HX8357_HandleTypeDef *display, uint16_t x1
     HX8357_WriteDataWord(display, y2);
 
     // Begin writing
-    HX8357_WriteCommand(display, HX8357_RAMWR);
+    HX8357_WriteCommand(display, HX8357_RAMWR); // why write ?
 
     return HX8357_OK;
 }
@@ -217,7 +222,7 @@ HX8357_Status HX8357_Init(HX8357_HandleTypeDef *display) {
     }
 
     // Update display dimensions based on orientation
-    if (display->orientation == HX8357_LANDSCAPE) {
+    if (display->orientation != HX8357_LANDSCAPE) {
         display->width = HX8357_HEIGHT;
         display->height = HX8357_WIDTH;
     } else {
@@ -227,6 +232,8 @@ HX8357_Status HX8357_Init(HX8357_HandleTypeDef *display) {
 
     return HX8357_OK;
 }
+
+
 
 HX8357_Status HX8357_FillScreen(HX8357_HandleTypeDef *display, uint16_t color) {
     return HX8357_FillRect(display, 0, 0, display->width, display->height, color);
@@ -258,6 +265,71 @@ HX8357_Status HX8357_FillRect(HX8357_HandleTypeDef *display, uint16_t x, uint16_
     return HX8357_OK;
 }
 
+HX8357_Status HX8357_Grid(HX8357_HandleTypeDef *display){
+	HX8357_FillScreen(display, BLACK);
+
+    // Calculate a grid increment that fits both width and height
+    uint32_t grid_inc_x = display->width / 10;  // Tentative grid increment based on width
+    uint32_t grid_inc_y = display->height / 10; // Tentative grid increment based on height
+
+    // Make sure both grid increments are as close as possible while ensuring full screen coverage
+    uint32_t grid_inc = min(grid_inc_x, grid_inc_y);  // Take the smaller of the two
+
+    // Calculate the number of vertical grid lines based on grid_inc
+    uint32_t num_grid_lines_x = ceil((float)display->width / grid_inc);
+    uint32_t num_grid_lines_y = ceil((float)display->height / grid_inc);
+
+    // Adjust increments to ensure the grid fills the screen
+    grid_inc = min(display->width / num_grid_lines_x, display->height / num_grid_lines_y);
+
+    // Draw vertical grid lines (spacing based on grid_inc)
+    for (int x = 0; x < display->width; x += grid_inc) {
+        HX8357_DrawLine(display, x, 0, x, display->height, WHITE);
+    }
+
+    // Draw horizontal grid lines (spacing based on grid_inc)
+    for (int y = 0; y < display->height; y += grid_inc) {
+        HX8357_DrawLine(display, 0, y, display->width, y, WHITE);
+    }
+
+    return HX8357_OK;
+}
+
+// Bresenham's line algorithm
+HX8357_Status HX8357_DrawLine(HX8357_HandleTypeDef *display, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color) {
+    int dx = abs(x2 - x1);   // Difference in x
+    int dy = abs(y2 - y1);   // Difference in y
+    int sx = (x1 < x2) ? 1 : -1;  // Step direction for x
+    int sy = (y1 < y2) ? 1 : -1;  // Step direction for y
+    int err = dx - dy;  // Error term for the algorithm
+
+    while (true) {
+        // Draw pixel at current position
+        HX8357_DrawPixel(display, x1, y1, color);
+
+        // If we reached the destination point, break the loop
+        if (x1 == x2 && y1 == y2) break;
+
+        // Calculate the error term
+        int e2 = err * 2;
+
+        // Move in the x direction if the error term allows it
+        if (e2 > -dy) {
+            err -= dy;
+            x1 += sx;
+        }
+
+        // Move in the y direction if the error term allows it
+        if (e2 < dx) {
+            err += dx;
+            y1 += sy;
+        }
+    }
+
+    // Return success status after drawing the line
+	return HX8357_OK;
+}
+
 HX8357_Status HX8357_DrawPixel(HX8357_HandleTypeDef *display, uint16_t x, uint16_t y, uint16_t color) {
     if (x >= display->width || y >= display->height) return HX8357_PARAM_ERROR;
 
@@ -274,6 +346,7 @@ void HX8357_DMA_Callback(HX8357_HandleTypeDef *display) {
     dma_busy = false;
 }
 
+// doesnst work
 // Test function to verify display operation
 HX8357_Status HX8357_Test(HX8357_HandleTypeDef *display) {
     // Fill screen with different colors

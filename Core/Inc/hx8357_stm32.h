@@ -102,9 +102,10 @@ typedef enum {
 HX8357_Status HX8357_Init(HX8357_HandleTypeDef *display);
 HX8357_Status HX8357_SetOrientation(HX8357_HandleTypeDef *display, HX8357_Orientation orientation);
 HX8357_Status HX8357_FillScreen(HX8357_HandleTypeDef *display, uint16_t color);
+HX8357_Status HX8357_Grid(HX8357_HandleTypeDef *display);
 HX8357_Status HX8357_DrawPixel(HX8357_HandleTypeDef *display, uint16_t x, uint16_t y, uint16_t color);
 HX8357_Status HX8357_DrawLine(HX8357_HandleTypeDef *display, uint16_t x1, uint16_t y1,
-                             uint16_t x2, uint16_t y2, uint16_t color, uint8_t thickness);
+                             uint16_t x2, uint16_t y2, uint16_t color);
 HX8357_Status HX8357_FillRect(HX8357_HandleTypeDef *display, uint16_t x, uint16_t y,
                              uint16_t w, uint16_t h, uint16_t color);
 HX8357_Status HX8357_DrawText(HX8357_HandleTypeDef *display, const char* text, uint16_t x, uint16_t y,
