@@ -1,0 +1,7 @@
+../Core/Src/hx8357_stm32.c:10:13:HX8357_Select	16	static
+../Core/Src/hx8357_stm32.c:14:13:HX8357_Unselect	16	static
+../Core/Src/hx8357_stm32.c:18:13:HX8357_SetCommand	16	static
+../Core/Src/hx8357_stm32.c:22:13:HX8357_SetData	16	static
+../Core/Src/hx8357_stm32.c:26:6:HX8357_WriteCommand	16	static
+../Core/Src/hx8357_stm32.c:33:6:HX8357_WriteData	16	static
+../Core/Src/hx8357_stm32.c:40:6:HX8357_Init	16	static
