@@ -36,7 +36,9 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+/* Private variables ---------------------------------------------------------*/
+extern DMA_HandleTypeDef hdma_adc1;
+extern uint32_t adc_buf[3];  // Buffer for ADC readings
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
