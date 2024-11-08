@@ -22,7 +22,6 @@
 *.launch
 .settings/
 .metadata/
-*.ld
 
 # System specific
 .DS_Store
