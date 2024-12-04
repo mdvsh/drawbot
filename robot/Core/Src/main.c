@@ -25,6 +25,7 @@
 #include "gyro.h"
 #include "robot.h"
 #include "stdio.h"
+#include "servo.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -38,7 +39,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -49,6 +49,7 @@
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
 
+TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
@@ -69,8 +70,8 @@ static void MX_I2C1_Init(void);
 static void MX_USART6_UART_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
-
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -113,8 +114,8 @@ int main(void)
   MX_USART6_UART_Init();
   MX_TIM2_Init();
   MX_USART2_UART_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-	HAL_UART_Receive_IT(&huart6, rx_buffer, sizeof(rx_buffer));
 	motors_init();
 	if (!gyro_init()){
 	  Error_Handler();
@@ -122,10 +123,14 @@ int main(void)
 	if (!imu_init()) {
 		Error_Handler();
 	}
-	HAL_Delay(1000);
+	HAL_Delay(2000);
 
 	Movement_Init();
 	Init(&global_robot);
+
+    mov.test_mode = true;
+    mov.current_test = TEST_SQUARE;
+    mov.test_step = 0;
 
 	//  TestMotors();
 
@@ -135,23 +140,43 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	if (mov.state == MOV_STATE_IDLE) {
-		UpdateDirection(&global_robot);
-		if (global_robot.active) {
-			UpdateRobotPosition(&global_robot);
+      if (mov.test_mode) {
+          if (mov.state == MOV_STATE_IDLE) {
+              // Execute next test movement
+              switch (mov.current_test) {
+                  case TEST_SQUARE:
+                      if (ExecuteSquareTest(&mov)) {
+                          // Test complete
+                          mov.test_mode = false;
+                      }
+                      break;
+                  default:
+                	  printf("unhandled test\r\n");
+              }
+          }
+      } else {
+    	  if (mov.state == MOV_STATE_IDLE) {
+  			UpdateDirection(&global_robot);
+  			if (global_robot.active) {
+  				UpdateRobotPosition(&global_robot);
 
-			mov.target_heading = -global_robot.desired_heading;
-			mov.target_distance = global_robot.desired_distance;
-			mov.state = MOV_STATE_TURNING;
-			mov.is_complete = false;
-		}
-	}
+  				mov.target_heading = -global_robot.desired_heading;
+  				mov.target_distance = global_robot.desired_distance;
+  				mov.state = MOV_STATE_TURNING;
+  				mov.is_complete = false;
+  				// todo: move to this
+//  		        Movement_SetMove(
+//  		            -global_robot.desired_heading,
+//  		            global_robot.desired_distance,
+//  		            !global_robot.pen_up
+//  		        );
+  			}
+    	  }
+      }
 
-	Movement_Update();
-	HAL_Delay(50);
-    /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
+		Movement_Update();
+		HAL_Delay(50);
   }
   /* USER CODE END 3 */
 }
@@ -233,6 +258,71 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
+  * @brief TIM1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM1_Init(void)
+{
+
+  /* USER CODE BEGIN TIM1_Init 0 */
+
+  /* USER CODE END TIM1_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
+
+  /* USER CODE BEGIN TIM1_Init 1 */
+
+  /* USER CODE END TIM1_Init 1 */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 20;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 20000;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+  sBreakDeadTimeConfig.DeadTime = 0;
+  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+  if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM1_Init 2 */
+
+  /* USER CODE END TIM1_Init 2 */
+  HAL_TIM_MspPostInit(&htim1);
 
 }
 
@@ -373,6 +463,10 @@ static void MX_TIM4_Init(void)
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
   {
     Error_Handler();
   }
