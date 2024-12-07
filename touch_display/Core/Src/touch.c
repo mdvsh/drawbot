@@ -260,16 +260,16 @@ void Touch_CalibrateInit(Touch_Calibration *cal)
     cal->cal_points[0].y = 39.3;
 
     // Top Right
-    cal->cal_points[1].x = 273.7;
+    cal->cal_points[1].x = 277;
     cal->cal_points[1].y = 47.6;
 
     // Bottom Left
     cal->cal_points[2].x = 37.0;
-    cal->cal_points[2].y = 363.1;
+    cal->cal_points[2].y = 447.1;
 
     // Bottom Right
-    cal->cal_points[3].x = 277.8;
-    cal->cal_points[3].y = 440.2;
+    cal->cal_points[3].x = 278.8;
+    cal->cal_points[3].y = 441.2;
 
     cal->display_width = 320;
     cal->display_height = 480;
@@ -314,10 +314,10 @@ bool Phantom_point(uint16_t display_x, uint16_t display_y) {
 	return (display_x <= 2 || display_y <= 2);
 }
 
-void Touch_DrawHandler(HX8357_HandleTypeDef *display, Touch_Calibration *cal, Zumo_Calibration *zum, UART_HandleTypeDef *huart, TouchEvent event)
+void Touch_DrawHandler(HX8357_HandleTypeDef *display, Touch_Calibration *cal, Zumo_Calibration *zum, UART_HandleTypeDef *huart, TouchEvent event, bool robot_draw)
 {
     const uint16_t MAX_DISTANCE = 12800;
-    const uint16_t MIN_DISTANCE = 90;
+    const uint16_t MIN_DISTANCE = 40;
     bool reset_point = true;
 
     if (event.touched && event.pressure > 0.1)
@@ -331,32 +331,34 @@ void Touch_DrawHandler(HX8357_HandleTypeDef *display, Touch_Calibration *cal, Zu
         	return;
         }
 
-        if (!cal->first_point)
-        {
-            int dx = abs(display_x - cal->last_x);
-            int dy = abs(display_y - cal->last_y);
-            int squared_dist = (dx*dy + dy*dy);
+        if (robot_draw) {
+        	Zumo_XbeeHandler(display, huart, zum, display_x, display_y);
+        } else {
+        	if (!cal->first_point) {
+				int dx = abs(display_x - cal->last_x);
+				int dy = abs(display_y - cal->last_y);
+				int squared_dist = (dx*dy + dy*dy);
 
-            if (squared_dist > MAX_DISTANCE) {
-            	Touch_ResetLine(cal);
-            }
-            else if ((squared_dist > MIN_DISTANCE)) {
-//            	HX8357_DrawThickLine(display, cal->last_x, cal->last_y, display_x, display_y, RED, 2);
-            	HX8357_DrawLine(display, cal->last_x, cal->last_y, display_x, display_y, RED);
-            }
-            else {
-            	reset_point = false;
-            }
+				if (squared_dist > MAX_DISTANCE) {
+					Touch_ResetLine(cal);
+				}
+				else if ((squared_dist > MIN_DISTANCE)) {
+					HX8357_DrawLine(display, cal->last_x, cal->last_y, display_x, display_y, YELLOW);
+//            		HX8357_DrawLine(display, cal->last_x, cal->last_y, display_x, display_y, RED);
+				}
+				else {
+					reset_point = false;
+				}
+			}
+        	if (reset_point){
+				cal->last_x = display_x;
+				cal->last_y = display_y;
+				cal->first_point = 0;
+			}
         }
+
         HX8357_EndTouch(display);
 
-        Zumo_XbeeHandler(display, huart, zum, display_x, display_y);
-
-        if (reset_point){
-        	cal->last_x = display_x;
-			cal->last_y = display_y;
-			cal->first_point = 0;
-        }
     }
 }
 
@@ -375,8 +377,25 @@ void Draw_ClearButton(HX8357_HandleTypeDef *display, ClearButton *btn) {
     HX8357_EndTouch(display);
 }
 
+void Draw_ToggleButton(HX8357_HandleTypeDef *display, ClearButton *btn, bool robot_draw) {
+    HX8357_BeginTouch(display);
+    HX8357_FillRect(display, btn->x, btn->y, btn->size, btn->size, btn->color);
+
+    // Draw X symbol in border_color
+    uint16_t padding = btn->size/4;
+    if (robot_draw) {
+    	HX8357_FillRect(display, btn->x + 10, btn->y + 10, btn->size - 20, btn->size - 20, RED);
+    } else {
+    	HX8357_FillRect(display, btn->x + 10, btn->y + 10, btn->size - 20, btn->size - 20, YELLOW);
+    }
+    HX8357_EndTouch(display);
+}
+
 bool Is_ClearButtonPressed(ClearButton *btn, uint16_t x, uint16_t y) {
     return (x >= btn->x && x <= (btn->x + btn->size) &&
             y >= btn->y && y <= (btn->y + btn->size));
 }
-
+bool Is_ToggleButtonPressed(ToggleButton *btn, uint16_t x, uint16_t y) {
+    return (x >= btn->x && x <= (btn->x + btn->size) &&
+            y >= btn->y && y <= (btn->y + btn->size));
+}

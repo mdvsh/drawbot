@@ -61,6 +61,15 @@ typedef struct {
     uint16_t border_color;
 } ClearButton;
 
+typedef struct {
+    uint16_t x;
+    uint16_t y;
+    uint16_t size;
+    uint16_t color;
+    uint16_t border_color;
+} ToggleButton;
+
+
 // Function prototypes
 void Touch_Init(ADC_HandleTypeDef *hadc);
 TouchEvent Touch_Read(void);
@@ -68,9 +77,10 @@ TouchEvent Touch_Read(void);
 void Touch_CalibrateInit(Touch_Calibration *cal);
 void Touch_MapCoordinates(Touch_Calibration *cal, uint16_t touch_x, uint16_t touch_y,
                           uint16_t *display_x, uint16_t *display_y);
-void Touch_DrawHandler(HX8357_HandleTypeDef *display, Touch_Calibration *cal, Zumo_Calibration *zum, UART_HandleTypeDef *huart, TouchEvent event);
+void Touch_DrawHandler(HX8357_HandleTypeDef *display, Touch_Calibration *cal, Zumo_Calibration *zum, UART_HandleTypeDef *huart, TouchEvent event, bool robot_draw);
 void Touch_ResetLine(Touch_Calibration *cal);
 void Draw_ClearButton(HX8357_HandleTypeDef *display, ClearButton *btn);
 bool Is_ClearButtonPressed(ClearButton *btn, uint16_t x, uint16_t y);
+bool Is_ToggleButtonPressed(ToggleButton *btn, uint16_t x, uint16_t y);
 bool Phantom_point(uint16_t display_x, uint16_t display_y);
 #endif /* INC_TOUCH_H_ */

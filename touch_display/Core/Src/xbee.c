@@ -26,13 +26,12 @@ void Zumo_CalibrateInit(Zumo_Calibration *zum)
 	zum->last_x = 0;
 	zum->last_y = 0;
 
-    zum->canvas_width = 144;
-    zum->canvas_height = 96; //quarter inch increments (24x36)
+    zum->canvas_width = 62;
+    zum->canvas_height = 52;
 
     zum->display_width = 480;
 	zum->display_height = 320;
 
-	zum->last_angle = 0;
 	zum->pen_down = false;
     zum->first_point = 1;
 }
@@ -43,7 +42,6 @@ void Zumo_ResetLine(Zumo_Calibration *zum) {
 
 void WriteToXbee(UART_HandleTypeDef *huart, uint16_t canvas_x, uint16_t canvas_y, bool pen_up) {
     uint8_t data[5];
-
     data[0] = (canvas_x >> 8) & 0xFF;  // High byte of canvas_x
     data[1] = canvas_x & 0xFF;         // Low byte of canvas_x
     data[2] = (canvas_y >> 8) & 0xFF;  // High byte of canvas_y
@@ -56,10 +54,8 @@ void WriteToXbee(UART_HandleTypeDef *huart, uint16_t canvas_x, uint16_t canvas_y
 
 void Zumo_XbeeHandler(HX8357_HandleTypeDef *display, UART_HandleTypeDef *huart, Zumo_Calibration *zum, int display_x, int display_y)
 {
-	const uint16_t MIN_DISTANCE = 36;     // 6 squared - for ~1.5 inch minimum spacing
-	const uint16_t MAX_DISTANCE = 20000;  // ~141 squared - ~35 inches max movement
-    const int MIN_ANGLE_CHANGE = 20;    // degrees
-    static bool was_touching = false;
+	const uint16_t MIN_DISTANCE = 100;     // 10 squared - for 10 cm minimum spacing
+	const uint16_t MAX_DISTANCE = 1600;  // ~40 squared - 40 cm max movement
 
     uint16_t canvas_x, canvas_y;
     Zumo_MapCoordinates(zum, display_x, display_y, &canvas_x, &canvas_y);
@@ -68,15 +64,6 @@ void Zumo_XbeeHandler(HX8357_HandleTypeDef *display, UART_HandleTypeDef *huart, 
     int dy = canvas_y - zum->last_y;
     int squared_dist = dx*dx + dy*dy;
     bool record_point = false;
-
-    // Calculate and round angle
-    float raw_angle = atan2f(dy, dx) * 180.0f / M_PI;
-    int rounded_angle = ((int)(raw_angle + 2.5f) / 5) * 5;
-    if (rounded_angle < 0) rounded_angle += 360;
-    if (rounded_angle >= 360) rounded_angle -= 360;
-
-    int angle_diff = abs(rounded_angle - zum->last_angle);
-    if (angle_diff > 180) angle_diff = 360 - angle_diff;
 
     // Simplified pen state logic
     if (zum->first_point) {
@@ -100,12 +87,11 @@ void Zumo_XbeeHandler(HX8357_HandleTypeDef *display, UART_HandleTypeDef *huart, 
     }
 
     if (record_point) {
-        zum->last_angle = rounded_angle;
 
         // Draw blue line for pen-down movements
         if (zum->pen_down) {
             HX8357_DrawThickLine(display, zum->last_display_x, zum->last_display_y,
-                                display_x, display_y, BLUE, 2);
+                                display_x, display_y, RED, 2);
         }
 
         // Send command to robot with pen state

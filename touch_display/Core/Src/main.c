@@ -19,8 +19,10 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stdio.h"
+#include <stdbool.h>
 #include "hx8357_stm32.h"
 #include "touch.h"
+#include "xbee.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -104,6 +106,7 @@ int main(void)
   MX_ADC1_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
+  bool robot_draw = false;
   HX8357_HandleTypeDef display = {
       .hspi = &hspi1,
       .cs_port = GPIOD,
@@ -126,14 +129,21 @@ int main(void)
   Zumo_CalibrateInit(&zumo_cal);
 
   ClearButton clear_btn = {
-      .x = display.width - 40,  // 40px from right
+      .x = display.width - 55,  // 55px from right
       .y = 10,                  // 10px from top
-      .size = 35,              // 30x30 square button
+      .size = 50,              // 30x30 square button
       .color = BLUE,
       .border_color = WHITE
   };
+  ToggleButton toggle_btn = {
+      .x = display.width - 55,  	// 45px from right
+      .y = display.height - 55,	// 45px from bottom
+      .size = 50,              		// 30x30 square button
+      .color = WHITE,
+      .border_color = BLACK
+  };
   Draw_ClearButton(&display, &clear_btn);
-
+  Draw_ToggleButton(&display, &toggle_btn, robot_draw);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -150,17 +160,27 @@ int main(void)
 
 	if (event.touched) {
 		uint16_t display_x, display_y;
+
 		Touch_MapCoordinates(&touch_cal, event.x, event.y, &display_x, &display_y);
 
 		if (Is_ClearButtonPressed(&clear_btn, display_x, display_y)) {
+		  WriteToXbee(&huart3, 0, 0, 1);
 		  HX8357_Grid(&display);
 		  Draw_ClearButton(&display, &clear_btn);
-			touch_cal.first_point = 1;
+		  Draw_ToggleButton(&display, &toggle_btn, robot_draw);
+		  touch_cal.first_point = 1;
+		} else if (Is_ToggleButtonPressed(&toggle_btn, display_x, display_y)) {
+	      WriteToXbee(&huart3, 0, 0, 1);
+		  robot_draw = !robot_draw;
+		  HX8357_Grid(&display);
+		  Draw_ClearButton(&display, &clear_btn);
+		  Draw_ToggleButton(&display, &toggle_btn, robot_draw);
+		  touch_cal.first_point = 1;
 		} else {
-			Touch_DrawHandler(&display, &touch_cal, &zumo_cal, &huart3, event);
+			Touch_DrawHandler(&display, &touch_cal, &zumo_cal, &huart3, event, robot_draw);
 		}
 		reset_count = 0;
-		//printf("Touch at X: %d, Y: %d, Pressure: %.2f\r\n", event.x, event.y, event.pressure);
+		printf("Touch at X: %d, Y: %d, Pressure: %.2f\r\n", event.x, event.y, event.pressure);
 	}
 
 	if (reset_count > 25) {

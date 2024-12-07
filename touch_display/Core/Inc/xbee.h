@@ -29,7 +29,6 @@ typedef struct
 	uint16_t last_display_y;
     uint16_t last_x;
 	uint16_t last_y;
-	int last_angle;
 	bool pen_down;
     uint8_t first_point;
 } Zumo_Calibration;
