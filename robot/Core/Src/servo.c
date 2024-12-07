@@ -52,8 +52,8 @@ void servo_set_position_smooth(int16_t target_angle, uint32_t step_delay_ms)
 void pen_control(uint8_t up)
 {
     if(up) {
-        servo_set_position_smooth(90, 15);
+        servo_set_position_smooth(80, 20);
     } else {
-        servo_set_position_smooth(-90, 15);
+        servo_set_position_smooth(32, 20);
     }
 }

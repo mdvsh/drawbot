@@ -116,6 +116,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
+	HAL_UART_Receive_IT(&huart6, rx_buffer, 5);
 	motors_init();
 	if (!gyro_init()){
 	  Error_Handler();
@@ -127,10 +128,12 @@ int main(void)
 
 	Movement_Init();
 	Init(&global_robot);
-
-    mov.test_mode = true;
+//
+    mov.test_mode = false;
     mov.current_test = TEST_SQUARE;
     mov.test_step = 0;
+
+	servo_init();
 
 	//  TestMotors();
 
@@ -138,6 +141,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+//  int c = 1;
   while (1)
   {
       if (mov.test_mode) {
@@ -159,23 +163,14 @@ int main(void)
   			UpdateDirection(&global_robot);
   			if (global_robot.active) {
   				UpdateRobotPosition(&global_robot);
-
-  				mov.target_heading = -global_robot.desired_heading;
-  				mov.target_distance = global_robot.desired_distance;
-  				mov.state = MOV_STATE_TURNING;
-  				mov.is_complete = false;
-  				// todo: move to this
-//  		        Movement_SetMove(
-//  		            -global_robot.desired_heading,
-//  		            global_robot.desired_distance,
-//  		            !global_robot.pen_up
-//  		        );
+  		        Movement_SetMove(-global_robot.desired_heading, global_robot.desired_distance, !global_robot.pen_up);
   			}
     	  }
       }
-
-
 		Movement_Update();
+//	  	pen_control(c%2==1);
+//	  	c++;
+
 		HAL_Delay(50);
   }
   /* USER CODE END 3 */

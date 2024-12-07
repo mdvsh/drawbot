@@ -22,9 +22,6 @@ typedef struct {
 } point;
 
 typedef struct {
-    uint16_t canvas_width;
-    uint16_t canvas_height;
-
     uint16_t current_x;
     uint16_t current_y;
 
@@ -50,5 +47,6 @@ point DeQueue(Robot *rob);
 void UpdateDirection(Robot *rob);
 void UpdateRobotPosition(Robot *rob);
 void ReadUart(Robot *rob, uint16_t x, uint16_t y, uint16_t pen);
+void debug_robot_state(Robot *rob) ;
 
 #endif /* INC_ROBOT_H_ */

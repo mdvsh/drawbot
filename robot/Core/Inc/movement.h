@@ -32,6 +32,8 @@ typedef struct {
     bool should_draw;
     bool is_complete;
 
+    float distance_moved;
+
     bool pen_down;
     uint32_t last_pen_change;
     float quarter_inch_to_mm;
