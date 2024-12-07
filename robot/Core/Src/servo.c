@@ -54,6 +54,6 @@ void pen_control(uint8_t up)
     if(up) {
         servo_set_position_smooth(80, 20);
     } else {
-        servo_set_position_smooth(32, 20);
+        servo_set_position_smooth(31, 20);
     }
 }

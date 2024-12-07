@@ -12,7 +12,7 @@
 
 #define TURN_P_GAIN 8.0f
 #define TURN_MIN_SPEED 80
-#define TURN_MAX_SPEED 150
+#define TURN_MAX_SPEED 120
 
 #define MOVE_P_GAIN 2.5f // for heading correction
 #define MOVE_BASE_SPEED 60
@@ -42,6 +42,7 @@ void Movement_SetMove(float target_heading, float distance, bool should_draw)
 	mov.state = MOV_STATE_TURNING;
 	mov.is_complete = false;
 	mov.start_time = 0;
+	mov.back_complete = false;
 }
 
 void Movement_Update(void)
@@ -61,8 +62,14 @@ void Movement_Update(void)
 		}
 
 		float heading_error = mov.target_heading - current_heading;
-
 		heading_error = fmodf(heading_error + 540.0f, 360.0f) - 180.0f;
+
+		if (mov.should_draw && !mov.back_complete)
+		{
+			mov.turn_offset = fabs(heading_error / 90) + 6;
+			mov.state = MOV_STATE_OFFSET;
+			break;
+		}
 
 		printf("Turn Debug - Error: %.2f, Heading: %.2f, DPS: %.2f\r\n",
 			   heading_error, current_heading, gyro_get_dps(2));
@@ -76,7 +83,15 @@ void Movement_Update(void)
 			if (fabs(current_dps) < DPS_STABLE_THRESHOLD)
 			{
 				printf("Turn complete - Final heading: %.2f\r\n", current_heading);
-				mov.state = MOV_STATE_MOVING;
+
+				if (!mov.should_draw)
+				{
+					mov.state = MOV_STATE_MOVING;
+				}
+				else
+				{
+					mov.state = MOV_STATE_OFFSET;
+				}
 			}
 		}
 		else
@@ -101,13 +116,72 @@ void Movement_Update(void)
 				right_speed = (int16_t)turn_speed;
 			}
 
-			if (right_speed > 0)
-				right_speed = (int16_t)(right_speed * 1.05f);
-			if (left_speed > 0)
-				left_speed = (int16_t)(left_speed * 1.0f);
+			//			if (right_speed > 0)
+			//				right_speed = (int16_t)(right_speed * 1.05f);
+			//			if (left_speed > 0)
+			//				left_speed = (int16_t)(left_speed * 1.0f);
 
 			motors_set_speeds(left_speed, right_speed);
 			HAL_Delay(20);
+		}
+	}
+	break;
+
+	case MOV_STATE_OFFSET:
+	{
+		if (mov.start_time == 0)
+		{
+			mov.start_time = HAL_GetTick();			  // Get fresh time after delays
+			mov.initial_heading = gyro_get_heading(); // Fresh heading after delays
+			mov.distance_moved = 0.0f;
+		}
+
+		uint32_t elapsed_time = current_time - mov.start_time;
+
+		float speed_factor = 1.0f;
+		if (elapsed_time < MOVE_ACCEL_TIME)
+		{
+			speed_factor = (float)elapsed_time / MOVE_ACCEL_TIME;
+		}
+
+		int16_t base_speed = (int16_t)(MOVE_BASE_SPEED * speed_factor);
+		if (!mov.back_complete)
+		{
+			base_speed = -fabs(base_speed);
+		}
+
+		float heading_error = mov.initial_heading - current_heading;
+		heading_error = fmodf(heading_error + 540.0f, 360.0f) - 180.0f;
+
+		int16_t correction = (int16_t)(heading_error * MOVE_P_GAIN);
+
+		motors_set_speeds(base_speed - correction, base_speed + correction);
+
+		const float DISTANCE_PER_SECOND_AT_BASE_SPEED = 6.0f; // todo: tune
+		float distance_increment = (base_speed / (float)MOVE_BASE_SPEED) * (DISTANCE_PER_SECOND_AT_BASE_SPEED * 0.05f);
+
+		mov.distance_moved += distance_increment;
+
+		//		printf("Move Debug - Heading Error: %.2f, Speed: %d, Time: %lu, Distance: %.2f/%.2f\r\n",
+		//			   heading_error, base_speed, elapsed_time, mov.distance_moved, mov.target_distance);
+		if (fabs(mov.distance_moved) >= mov.turn_offset)
+		{
+			motors_set_speeds(20, 20); // slow down for slippage reduction
+			HAL_Delay(50);
+			motors_stop();
+			HAL_Delay(50);
+			// todo update curent x and y
+			if (mov.back_complete)
+			{
+				mov.state = MOV_STATE_MOVING;
+			}
+			else
+			{
+				mov.state = MOV_STATE_TURNING;
+			}
+			mov.back_complete = true;
+			mov.start_time = 0;
+			printf("Offset complete - Final distance: %.2f\r\n", mov.distance_moved);
 		}
 	}
 	break;

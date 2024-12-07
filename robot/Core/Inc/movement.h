@@ -20,7 +20,8 @@ typedef enum {
 typedef enum {
     MOV_STATE_IDLE,
     MOV_STATE_TURNING,
-    MOV_STATE_MOVING
+    MOV_STATE_MOVING,
+	MOV_STATE_OFFSET,
 } MovementState;
 
 typedef struct {
@@ -41,6 +42,8 @@ typedef struct {
     TestPattern current_test;
     uint8_t test_step;
     bool test_mode;
+    bool back_complete;
+    int turn_offset;
 
 } Movement;
 
