@@ -8,40 +8,37 @@
 #ifndef INC_TOUCH_H_
 #define INC_TOUCH_H_
 
+#include "hx8357_stm32.h"
 #include "main.h"
 #include "xbee.h"
-#include "hx8357_stm32.h"
 
-#define X_POS_PORT GPIOC
-#define X_POS_PIN GPIO_PIN_0
+#define X_POS_PORT        GPIOC
+#define X_POS_PIN         GPIO_PIN_0
 #define X_POS_ADC_CHANNEL ADC_CHANNEL_1
-#define Y_POS_PORT GPIOA
-#define Y_POS_PIN GPIO_PIN_3
+#define Y_POS_PORT        GPIOA
+#define Y_POS_PIN         GPIO_PIN_3
 #define Y_POS_ADC_CHANNEL ADC_CHANNEL_8
-#define X_NEG_PORT GPIOC
-#define X_NEG_PIN GPIO_PIN_1
-#define Y_NEG_PORT GPIOC
-#define Y_NEG_PIN GPIO_PIN_3
+#define X_NEG_PORT        GPIOC
+#define X_NEG_PIN         GPIO_PIN_1
+#define Y_NEG_PORT        GPIOC
+#define Y_NEG_PIN         GPIO_PIN_3
 
-#define MAX_GC_SAMPLES 11
+#define MAX_GC_SAMPLES     11
 #define PRESSURE_THRESHOLD 0.9f
-#define SCREEN_WIDTH 320
-#define SCREEN_HEIGHT 480
-#define SETTLE_TIME_MS 2
+#define SCREEN_WIDTH       320
+#define SCREEN_HEIGHT      480
+#define SETTLE_TIME_MS     2
 
 // Touch event structure
-typedef struct
-{
+typedef struct {
     uint16_t x;
     uint16_t y;
     float pressure;
     uint8_t touched;
 } TouchEvent;
 
-typedef struct
-{
-    struct
-    {
+typedef struct {
+    struct {
         float x;
         float y;
     } cal_points[4];
@@ -69,7 +66,6 @@ typedef struct {
     uint16_t border_color;
 } ToggleButton;
 
-
 // Function prototypes
 void Touch_Init(ADC_HandleTypeDef *hadc);
 TouchEvent Touch_Read(void);
@@ -77,9 +73,11 @@ TouchEvent Touch_Read(void);
 void Touch_CalibrateInit(Touch_Calibration *cal);
 void Touch_MapCoordinates(Touch_Calibration *cal, uint16_t touch_x, uint16_t touch_y,
                           uint16_t *display_x, uint16_t *display_y);
-void Touch_DrawHandler(HX8357_HandleTypeDef *display, Touch_Calibration *cal, Zumo_Calibration *zum, UART_HandleTypeDef *huart, TouchEvent event, bool robot_draw);
+void Touch_DrawHandler(HX8357_HandleTypeDef *display, Touch_Calibration *cal, Zumo_Calibration *zum,
+                       UART_HandleTypeDef *huart, TouchEvent event, bool robot_draw);
 void Touch_ResetLine(Touch_Calibration *cal);
 void Draw_ClearButton(HX8357_HandleTypeDef *display, ClearButton *btn);
+void Draw_ToggleButton(HX8357_HandleTypeDef *display, ToggleButton *btn, bool robot_draw);
 bool Is_ClearButtonPressed(ClearButton *btn, uint16_t x, uint16_t y);
 bool Is_ToggleButtonPressed(ToggleButton *btn, uint16_t x, uint16_t y);
 bool Phantom_point(uint16_t display_x, uint16_t display_y);

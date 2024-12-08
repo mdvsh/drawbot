@@ -6,30 +6,25 @@
  */
 
 #include "hx8357_stm32.h"
-#include <string.h>
 #include <math.h>
+#include <string.h>
 
+// Define min functon
 #ifndef min
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #endif
-
-#define SWAP_UINT16(a, b) \
-    {                     \
-        uint16_t t = a;   \
-        a = b;            \
-        b = t;            \
-    }
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 // Private functions declarations
 static void HX8357_Select(HX8357_HandleTypeDef *display);
 static void HX8357_Unselect(HX8357_HandleTypeDef *display);
 static void HX8357_WriteCommand(HX8357_HandleTypeDef *display, uint8_t cmd);
 static void HX8357_WriteData(HX8357_HandleTypeDef *display, const uint8_t *data, uint16_t size);
+static void HX8357_WriteDataWord(HX8357_HandleTypeDef *display, uint16_t data);
 static HX8357_Status HX8357_SetWindow(HX8357_HandleTypeDef *display, uint16_t x1, uint16_t y1,
                                       uint16_t x2, uint16_t y2);
 
 static const uint8_t init_seq[] = {
+    // Initialization sequence for LCD
     HX8357_SWRESET,
     0x80 + 100 / 5, // Soft reset, then delay 10 ms
     HX8357D_SETC,
@@ -135,13 +130,6 @@ static const uint8_t init_seq[] = {
     0,             // END OF COMMAND LIST
 };
 
-void HX8357_Reset(HX8357_HandleTypeDef *display) {
-    HAL_GPIO_WritePin(display->rst_port, display->rst_pin, GPIO_PIN_RESET);
-    HAL_Delay(10);  // Hold reset for 10ms
-    HAL_GPIO_WritePin(display->rst_port, display->rst_pin, GPIO_PIN_SET);
-    HAL_Delay(150);  // Wait for 150ms after reset
-}
-
 static void HX8357_Select(HX8357_HandleTypeDef *display)
 {
     HAL_GPIO_WritePin(display->cs_port, display->cs_pin, GPIO_PIN_RESET);
@@ -170,7 +158,8 @@ static void HX8357_WriteDataWord(HX8357_HandleTypeDef *display, uint16_t data)
     HX8357_WriteData(display, data_bytes, 2);
 }
 
-static HX8357_Status HX8357_SetWindow(HX8357_HandleTypeDef *display, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
+static HX8357_Status HX8357_SetWindow(HX8357_HandleTypeDef *display, uint16_t x1, uint16_t y1,
+                                      uint16_t x2, uint16_t y2)
 {
     HX8357_Select(display);
 
@@ -185,12 +174,20 @@ static HX8357_Status HX8357_SetWindow(HX8357_HandleTypeDef *display, uint16_t x1
     HX8357_WriteDataWord(display, y2);
 
     // Begin writing
-    HX8357_WriteCommand(display, HX8357_RAMWR); // why write ?
+    HX8357_WriteCommand(display, HX8357_RAMWR);
 
     return HX8357_OK;
 }
 
 // Public function implementations
+void HX8357_Reset(HX8357_HandleTypeDef *display)
+{
+    HAL_GPIO_WritePin(display->rst_port, display->rst_pin, GPIO_PIN_RESET);
+    HAL_Delay(10); // Hold reset for 10ms
+    HAL_GPIO_WritePin(display->rst_port, display->rst_pin, GPIO_PIN_SET);
+    HAL_Delay(150); // Wait for 150ms after reset
+}
+
 HX8357_Status HX8357_Init(HX8357_HandleTypeDef *display)
 {
     if (!display || !display->hspi)
@@ -207,20 +204,15 @@ HX8357_Status HX8357_Init(HX8357_HandleTypeDef *display)
     const uint8_t *addr = init_seq;
     uint8_t cmd, x, numArgs;
 
-    while ((cmd = *(addr++)) > 0)
-    { // '0' command ends list
+    while ((cmd = *(addr++)) > 0) { // '0' command ends list
         x = *(addr++);
         numArgs = x & 0x7F;
-        if (cmd != 0xFF)
-        { // '255' is ignored
-            if (x & 0x80)
-            { // If high bit set, numArgs is a delay time
+        if (cmd != 0xFF) {  // '255' is ignored
+            if (x & 0x80) { // If high bit set, numArgs is a delay time
                 HX8357_Select(display);
                 HX8357_WriteCommand(display, cmd);
                 HX8357_Unselect(display);
-            }
-            else
-            {
+            } else {
                 HX8357_Select(display);
                 HX8357_WriteCommand(display, cmd);
                 HX8357_WriteData(display, addr, numArgs);
@@ -228,20 +220,16 @@ HX8357_Status HX8357_Init(HX8357_HandleTypeDef *display)
                 addr += numArgs;
             }
         }
-        if (x & 0x80)
-        {                           // If high bit set...
+        if (x & 0x80) {             // If high bit set...
             HAL_Delay(numArgs * 5); // numArgs is actually a delay time (5ms units)
         }
     }
 
     // Update display dimensions based on orientation
-    if (display->orientation != HX8357_LANDSCAPE)
-    {
+    if (display->orientation != HX8357_LANDSCAPE) {
         display->width = HX8357_HEIGHT;
         display->height = HX8357_WIDTH;
-    }
-    else
-    {
+    } else {
         display->width = HX8357_WIDTH;
         display->height = HX8357_HEIGHT;
     }
@@ -254,7 +242,8 @@ HX8357_Status HX8357_FillScreen(HX8357_HandleTypeDef *display, uint16_t color)
     return HX8357_FillRect(display, 0, 0, display->width, display->height, color);
 }
 
-HX8357_Status HX8357_FillRect(HX8357_HandleTypeDef *display, uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color)
+HX8357_Status HX8357_FillRect(HX8357_HandleTypeDef *display, uint16_t x, uint16_t y, uint16_t w,
+                              uint16_t h, uint16_t color)
 {
     // Clip to display bounds
     if (x >= display->width || y >= display->height)
@@ -274,8 +263,7 @@ HX8357_Status HX8357_FillRect(HX8357_HandleTypeDef *display, uint16_t x, uint16_
     uint32_t total_pixels = w * h;
 
     // Fill the rectangle
-    for (uint32_t i = 0; i < total_pixels; i++)
-    {
+    for (uint32_t i = 0; i < total_pixels; i++) {
         HX8357_WriteData(display, &color_high, 1);
         HX8357_WriteData(display, &color_low, 1);
     }
@@ -295,44 +283,36 @@ HX8357_Status HX8357_Grid(HX8357_HandleTypeDef *display)
     // Make sure both grid increments are as close as possible while ensuring full screen coverage
     uint32_t grid_inc = min(grid_inc_x, grid_inc_y); // Take the smaller of the two
 
-    // Calculate the number of vertical grid lines based on grid_inc
-    uint32_t num_grid_lines_x = ceil((float)display->width / grid_inc);
-    uint32_t num_grid_lines_y = ceil((float)display->height / grid_inc);
-
-    // Adjust increments to ensure the grid fills the screen
-    grid_inc = min(display->width / num_grid_lines_x, display->height / num_grid_lines_y);
-
     // Draw vertical grid lines (spacing based on grid_inc)
-    for (int x = 0; x < display->width; x += grid_inc)
-    {
-        HX8357_DrawLine(display, x, 0, x, display->height, WHITE);
+    for (int x = 0; x < display->width; x += grid_inc) {
+        HX8357_DrawLine(display, x, 0, x, display->height, WHITE, 1);
     }
 
     // Draw horizontal grid lines (spacing based on grid_inc)
-    for (int y = 0; y < display->height; y += grid_inc)
-    {
-        HX8357_DrawLine(display, 0, y, display->width, y, WHITE);
+    for (int y = 0; y < display->height; y += grid_inc) {
+        HX8357_DrawLine(display, 0, y, display->width, y, WHITE, 1);
     }
-
-    HX8357_DrawPixel(display, 3, 3, GREEN);
-    HX8357_DrawPixel(display, display->width - 3, 3, YELLOW);
 
     return HX8357_OK;
 }
 
 // Bresenham's line algorithm
-HX8357_Status HX8357_DrawLine(HX8357_HandleTypeDef *display, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
+HX8357_Status HX8357_DrawLine(HX8357_HandleTypeDef *display, uint16_t x1, uint16_t y1, uint16_t x2,
+                              uint16_t y2, uint16_t color, uint8_t thickness)
 {
-    int dx = abs(x2 - x1);       // Difference in x
-    int dy = abs(y2 - y1);       // Difference in y
+    int dx = fabs(x2 - x1);      // Difference in x
+    int dy = fabs(y2 - y1);      // Difference in y
     int sx = (x1 < x2) ? 1 : -1; // Step direction for x
     int sy = (y1 < y2) ? 1 : -1; // Step direction for y
     int err = dx - dy;           // Error term for the algorithm
 
-    while (true)
-    {
+    while (true) {
         // Draw pixel at current position
-        HX8357_DrawPixel(display, x1, y1, color);
+        if (thickness == 1) {
+            HX8357_DrawPixel(display, x1, y1, color);
+        } else {
+            HX8357_DrawThickPixel(display, x1, y1, color, thickness);
+        }
 
         // If we reached the destination point, break the loop
         if (x1 == x2 && y1 == y2)
@@ -342,15 +322,13 @@ HX8357_Status HX8357_DrawLine(HX8357_HandleTypeDef *display, uint16_t x1, uint16
         int e2 = err * 2;
 
         // Move in the x direction if the error term allows it
-        if (e2 > -dy)
-        {
+        if (e2 > -dy) {
             err -= dy;
             x1 += sx;
         }
 
         // Move in the y direction if the error term allows it
-        if (e2 < dx)
-        {
+        if (e2 < dx) {
             err += dx;
             y1 += sy;
         }
@@ -359,7 +337,8 @@ HX8357_Status HX8357_DrawLine(HX8357_HandleTypeDef *display, uint16_t x1, uint16
     return HX8357_OK;
 }
 
-HX8357_Status HX8357_DrawPixel(HX8357_HandleTypeDef *display, uint16_t x, uint16_t y, uint16_t color)
+HX8357_Status HX8357_DrawPixel(HX8357_HandleTypeDef *display, uint16_t x, uint16_t y,
+                               uint16_t color)
 {
     if (x >= display->width || y >= display->height)
         return HX8357_PARAM_ERROR;
@@ -372,15 +351,13 @@ HX8357_Status HX8357_DrawPixel(HX8357_HandleTypeDef *display, uint16_t x, uint16
     return HX8357_OK;
 }
 
-HX8357_Status HX8357_DrawThickPixel(HX8357_HandleTypeDef *display, uint16_t x, uint16_t y, uint16_t color, uint8_t thickness)
+HX8357_Status HX8357_DrawThickPixel(HX8357_HandleTypeDef *display, uint16_t x, uint16_t y,
+                                    uint16_t color, uint8_t thickness)
 {
-    // Draw a filled circle or square for thicker points
-    for (int16_t i = -thickness / 2; i <= thickness / 2; i++)
-    {
-        for (int16_t j = -thickness / 2; j <= thickness / 2; j++)
-        {
-            if (x + i >= 0 && x + i < display->width && y + j >= 0 && y + j < display->height)
-            {
+    // Draw a filled square for thicker points
+    for (int16_t i = -thickness / 2; i <= thickness / 2; i++) {
+        for (int16_t j = -thickness / 2; j <= thickness / 2; j++) {
+            if (x + i >= 0 && x + i < display->width && y + j >= 0 && y + j < display->height) {
                 HX8357_DrawPixel(display, x + i, y + j, color);
             }
         }
@@ -388,40 +365,12 @@ HX8357_Status HX8357_DrawThickPixel(HX8357_HandleTypeDef *display, uint16_t x, u
     return HX8357_OK;
 }
 
-HX8357_Status HX8357_DrawThickLine(HX8357_HandleTypeDef *display, uint16_t x1, uint16_t y1,  uint16_t x2, uint16_t y2, uint16_t color, uint8_t thickness)
+void HX8357_BeginTouch(HX8357_HandleTypeDef *display)
 {
-    int dx = abs(x2 - x1);
-    int dy = abs(y2 - y1);
-    int sx = (x1 < x2) ? 1 : -1;
-    int sy = (y1 < y2) ? 1 : -1;
-    int err = dx - dy;
-
-    while (true)
-    {
-        HX8357_DrawThickPixel(display, x1, y1, color, thickness);
-
-        if (x1 == x2 && y1 == y2)
-            break;
-
-        int e2 = 2 * err;
-        if (e2 > -dy)
-        {
-            err -= dy;
-            x1 += sx;
-        }
-        if (e2 < dx)
-        {
-            err += dx;
-            y1 += sy;
-        }
-    }
-    return HX8357_OK;
-}
-
-void HX8357_BeginTouch(HX8357_HandleTypeDef *display) {
     HX8357_Unselect(display);
 }
 
-void HX8357_EndTouch(HX8357_HandleTypeDef *display) {
+void HX8357_EndTouch(HX8357_HandleTypeDef *display)
+{
     HX8357_Select(display);
 }

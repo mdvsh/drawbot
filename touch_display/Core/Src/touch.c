@@ -7,10 +7,9 @@
 
 #include "touch.h"
 #include "xbee.h"
-
-#include <stdlib.h>
-#include <stdio.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #define ADC_MAX_VALUE ((1 << 12) - 1)
 
@@ -23,68 +22,7 @@ static float Touch_ReadZ(void);
 static uint16_t Get_Median(uint16_t arr[], uint8_t size);
 static void Configure_ADC_Channel(uint32_t channel);
 
-void Touch_Init(ADC_HandleTypeDef *hadc)
-{
-    touch_adc = hadc;
-
-    // Initial pin configuration
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-
-    // Enable GPIO Clocks if not already done in CubeMX
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    __HAL_RCC_GPIOC_CLK_ENABLE();
-
-    // Configure all pins as analog initially
-    GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-
-    GPIO_InitStruct.Pin = X_POS_PIN;
-    HAL_GPIO_Init(X_POS_PORT, &GPIO_InitStruct);
-    GPIO_InitStruct.Pin = Y_POS_PIN;
-    HAL_GPIO_Init(Y_POS_PORT, &GPIO_InitStruct);
-    GPIO_InitStruct.Pin = X_NEG_PIN;
-    HAL_GPIO_Init(X_NEG_PORT, &GPIO_InitStruct);
-    GPIO_InitStruct.Pin = Y_NEG_PIN;
-    HAL_GPIO_Init(Y_NEG_PORT, &GPIO_InitStruct);
-}
-
-TouchEvent Touch_Read(void)
-{
-    TouchEvent event = {0};
-    static uint32_t last_time = 0;
-    uint32_t current_time = HAL_GetTick();
-
-    // Reduce settle time for more frequent sampling
-    if (current_time - last_time < 5)
-    {
-        return event;
-    }
-    last_time = current_time;
-
-    // Check pressure
-    event.pressure = Touch_ReadZ();
-
-    if (event.pressure < PRESSURE_THRESHOLD)
-    {
-        uint16_t x_samples[MAX_GC_SAMPLES];
-        uint16_t y_samples[MAX_GC_SAMPLES];
-
-        // Take samples
-        for (uint8_t i = 0; i < MAX_GC_SAMPLES; i++)
-        {
-            x_samples[i] = Touch_ReadX();
-            y_samples[i] = Touch_ReadY();
-        }
-
-        // Get median values
-        event.x = Get_Median(x_samples, MAX_GC_SAMPLES);
-        event.y = Get_Median(y_samples, MAX_GC_SAMPLES);
-        event.touched = 1;
-    }
-
-    return event;
-}
+// Private function definitions
 static uint16_t Touch_ReadX(void)
 {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -213,14 +151,26 @@ static float Touch_ReadZ(void)
     uint32_t z2 = ADC_MAX_VALUE - HAL_ADC_GetValue(touch_adc);
 
     // Calculate pressure
-    if (z1 > z2)
-    {
+    if (z1 > z2) {
         return (float)(z1 - z2) / ADC_MAX_VALUE;
-    }
-    else
-    {
+    } else {
         return (float)(z2 - z1) / ADC_MAX_VALUE;
     }
+}
+
+static uint16_t Get_Median(uint16_t arr[], uint8_t size)
+{
+    // Simple bubble sort
+    for (uint8_t i = 0; i < size - 1; i++) {
+        for (uint8_t j = 0; j < size - i - 1; j++) {
+            if (arr[j] > arr[j + 1]) {
+                uint16_t temp = arr[j];
+                arr[j] = arr[j + 1];
+                arr[j + 1] = temp;
+            }
+        }
+    }
+    return arr[size / 2];
 }
 
 static void Configure_ADC_Channel(uint32_t channel)
@@ -235,39 +185,82 @@ static void Configure_ADC_Channel(uint32_t channel)
     HAL_ADC_ConfigChannel(touch_adc, &sConfig);
 }
 
-static uint16_t Get_Median(uint16_t arr[], uint8_t size)
+// Public function definitions
+void Touch_Init(ADC_HandleTypeDef *hadc)
 {
-    // Simple bubble sort
-    for (uint8_t i = 0; i < size - 1; i++)
-    {
-        for (uint8_t j = 0; j < size - i - 1; j++)
-        {
-            if (arr[j] > arr[j + 1])
-            {
-                uint16_t temp = arr[j];
-                arr[j] = arr[j + 1];
-                arr[j + 1] = temp;
-            }
-        }
+    touch_adc = hadc;
+
+    // Initial pin configuration
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+    // Enable GPIO Clocks if not already done in CubeMX
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+
+    // Configure all pins as analog initially
+    GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+
+    GPIO_InitStruct.Pin = X_POS_PIN;
+    HAL_GPIO_Init(X_POS_PORT, &GPIO_InitStruct);
+    GPIO_InitStruct.Pin = Y_POS_PIN;
+    HAL_GPIO_Init(Y_POS_PORT, &GPIO_InitStruct);
+    GPIO_InitStruct.Pin = X_NEG_PIN;
+    HAL_GPIO_Init(X_NEG_PORT, &GPIO_InitStruct);
+    GPIO_InitStruct.Pin = Y_NEG_PIN;
+    HAL_GPIO_Init(Y_NEG_PORT, &GPIO_InitStruct);
+}
+
+TouchEvent Touch_Read(void)
+{
+    TouchEvent event = {0};
+    static uint32_t last_time = 0;
+    uint32_t current_time = HAL_GetTick();
+
+    // Reduce settle time for more frequent sampling
+    if (current_time - last_time < 5) {
+        return event;
     }
-    return arr[size / 2];
+    last_time = current_time;
+
+    // Check pressure
+    event.pressure = Touch_ReadZ();
+
+    if (event.pressure < PRESSURE_THRESHOLD) {
+        uint16_t x_samples[MAX_GC_SAMPLES];
+        uint16_t y_samples[MAX_GC_SAMPLES];
+
+        // Take samples
+        for (uint8_t i = 0; i < MAX_GC_SAMPLES; i++) {
+            x_samples[i] = Touch_ReadX();
+            y_samples[i] = Touch_ReadY();
+        }
+
+        // Get median values
+        event.x = Get_Median(x_samples, MAX_GC_SAMPLES);
+        event.y = Get_Median(y_samples, MAX_GC_SAMPLES);
+        event.touched = 1;
+    }
+
+    return event;
 }
 
 void Touch_CalibrateInit(Touch_Calibration *cal)
 {
-    // Top Left
+    // Bottom Left
     cal->cal_points[0].x = 37.5;
     cal->cal_points[0].y = 39.3;
 
-    // Top Right
+    // Top Left
     cal->cal_points[1].x = 277;
     cal->cal_points[1].y = 47.6;
 
-    // Bottom Left
+    // Bottom Right
     cal->cal_points[2].x = 37.0;
     cal->cal_points[2].y = 447.1;
 
-    // Bottom Right
+    // Top Right
     cal->cal_points[3].x = 278.8;
     cal->cal_points[3].y = 441.2;
 
@@ -306,96 +299,92 @@ void Touch_MapCoordinates(Touch_Calibration *cal, uint16_t touch_x, uint16_t tou
         *display_y = 0;
 }
 
-void Touch_ResetLine(Touch_Calibration *cal) {
-	cal->first_point = 1;
-}
-
-bool Phantom_point(uint16_t display_x, uint16_t display_y) {
-	return (display_x <= 2 || display_y <= 2);
-}
-
-void Touch_DrawHandler(HX8357_HandleTypeDef *display, Touch_Calibration *cal, Zumo_Calibration *zum, UART_HandleTypeDef *huart, TouchEvent event, bool robot_draw)
+void Touch_DrawHandler(HX8357_HandleTypeDef *display, Touch_Calibration *cal, Zumo_Calibration *zum,
+                       UART_HandleTypeDef *huart, TouchEvent event, bool robot_draw)
 {
     const uint16_t MAX_DISTANCE = 12800;
     const uint16_t MIN_DISTANCE = 40;
     bool reset_point = true;
 
-    if (event.touched && event.pressure > 0.1)
-    {
+    if (event.touched && event.pressure > 0.1) {
         uint16_t display_x, display_y;
         Touch_MapCoordinates(cal, event.x, event.y, &display_x, &display_y);
 
         HX8357_BeginTouch(display);
 
         if (Phantom_point(display_x, display_y)) {
-        	return;
+            return;
         }
 
         if (robot_draw) {
-        	Zumo_XbeeHandler(display, huart, zum, display_x, display_y);
+            Zumo_XbeeHandler(display, huart, zum, display_x, display_y);
         } else {
-        	if (!cal->first_point) {
-				int dx = abs(display_x - cal->last_x);
-				int dy = abs(display_y - cal->last_y);
-				int squared_dist = (dx*dy + dy*dy);
+            if (!cal->first_point) {
+                int dx = abs(display_x - cal->last_x);
+                int dy = abs(display_y - cal->last_y);
+                int squared_dist = (dx * dy + dy * dy);
 
-				if (squared_dist > MAX_DISTANCE) {
-					Touch_ResetLine(cal);
-				}
-				else if ((squared_dist > MIN_DISTANCE)) {
-					HX8357_DrawLine(display, cal->last_x, cal->last_y, display_x, display_y, YELLOW);
-//            		HX8357_DrawLine(display, cal->last_x, cal->last_y, display_x, display_y, RED);
-				}
-				else {
-					reset_point = false;
-				}
-			}
-        	if (reset_point){
-				cal->last_x = display_x;
-				cal->last_y = display_y;
-				cal->first_point = 0;
-			}
+                if (squared_dist > MAX_DISTANCE) {
+                    Touch_ResetLine(cal);
+                } else if ((squared_dist > MIN_DISTANCE)) {
+                    HX8357_DrawLine(display, cal->last_x, cal->last_y, display_x, display_y, YELLOW,
+                                    1);
+                } else {
+                    reset_point = false;
+                }
+            }
+            if (reset_point) {
+                cal->last_x = display_x;
+                cal->last_y = display_y;
+                cal->first_point = 0;
+            }
         }
-
         HX8357_EndTouch(display);
-
     }
 }
 
-void Draw_ClearButton(HX8357_HandleTypeDef *display, ClearButton *btn) {
+void Touch_ResetLine(Touch_Calibration *cal)
+{
+    cal->first_point = 1;
+}
+
+void Draw_ClearButton(HX8357_HandleTypeDef *display, ClearButton *btn)
+{
     HX8357_BeginTouch(display);
     HX8357_FillRect(display, btn->x, btn->y, btn->size, btn->size, btn->color);
 
     // Draw X symbol in border_color
-    uint16_t padding = btn->size/4;
-    HX8357_DrawThickLine(display, btn->x + padding, btn->y + padding,
-                        btn->x + btn->size - padding, btn->y + btn->size - padding,
-                        btn->border_color, 2);
-    HX8357_DrawThickLine(display, btn->x + btn->size - padding, btn->y + padding,
-                        btn->x + padding, btn->y + btn->size - padding,
-                        btn->border_color, 2);
+    uint16_t padding = btn->size / 4;
+    HX8357_DrawLine(display, btn->x + padding, btn->y + padding, btn->x + btn->size - padding,
+                    btn->y + btn->size - padding, btn->border_color, 2);
+    HX8357_DrawLine(display, btn->x + btn->size - padding, btn->y + padding, btn->x + padding,
+                    btn->y + btn->size - padding, btn->border_color, 2);
     HX8357_EndTouch(display);
 }
 
-void Draw_ToggleButton(HX8357_HandleTypeDef *display, ClearButton *btn, bool robot_draw) {
+void Draw_ToggleButton(HX8357_HandleTypeDef *display, ToggleButton *btn, bool robot_draw)
+{
     HX8357_BeginTouch(display);
     HX8357_FillRect(display, btn->x, btn->y, btn->size, btn->size, btn->color);
 
     // Draw X symbol in border_color
-    uint16_t padding = btn->size/4;
     if (robot_draw) {
-    	HX8357_FillRect(display, btn->x + 10, btn->y + 10, btn->size - 20, btn->size - 20, RED);
+        HX8357_FillRect(display, btn->x + 10, btn->y + 10, btn->size - 20, btn->size - 20, RED);
     } else {
-    	HX8357_FillRect(display, btn->x + 10, btn->y + 10, btn->size - 20, btn->size - 20, YELLOW);
+        HX8357_FillRect(display, btn->x + 10, btn->y + 10, btn->size - 20, btn->size - 20, YELLOW);
     }
     HX8357_EndTouch(display);
 }
 
-bool Is_ClearButtonPressed(ClearButton *btn, uint16_t x, uint16_t y) {
-    return (x >= btn->x && x <= (btn->x + btn->size) &&
-            y >= btn->y && y <= (btn->y + btn->size));
+bool Is_ClearButtonPressed(ClearButton *btn, uint16_t x, uint16_t y)
+{
+    return (x >= btn->x && x <= (btn->x + btn->size) && y >= btn->y && y <= (btn->y + btn->size));
 }
-bool Is_ToggleButtonPressed(ToggleButton *btn, uint16_t x, uint16_t y) {
-    return (x >= btn->x && x <= (btn->x + btn->size) &&
-            y >= btn->y && y <= (btn->y + btn->size));
+bool Is_ToggleButtonPressed(ToggleButton *btn, uint16_t x, uint16_t y)
+{
+    return (x >= btn->x && x <= (btn->x + btn->size) && y >= btn->y && y <= (btn->y + btn->size));
+}
+bool Phantom_point(uint16_t display_x, uint16_t display_y)
+{
+    return (display_x <= 2 || display_y <= 2);
 }
