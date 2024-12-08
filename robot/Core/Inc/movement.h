@@ -2,26 +2,23 @@
  * movement.h
  *
  *  Created on: Nov 25, 2024
- *      Author: madhavss
+ *      Author: madhavss, lbinodos
  */
 
 #ifndef INC_MOVEMENT_H_
 #define INC_MOVEMENT_H_
 
 #include "main.h"
-#include <stdint.h>
 #include "stdbool.h"
+#include <stdint.h>
 
-typedef enum {
-    TEST_IDLE,
-    TEST_SQUARE,
-} TestPattern;
+typedef enum { TEST_IDLE, TEST_SQUARE, TEST_TURN } TestPattern;
 
 typedef enum {
     MOV_STATE_IDLE,
     MOV_STATE_TURNING,
     MOV_STATE_MOVING,
-	MOV_STATE_OFFSET,
+    MOV_STATE_OFFSET,
 } MovementState;
 
 typedef struct {
@@ -43,7 +40,6 @@ typedef struct {
     uint8_t test_step;
     bool test_mode;
     bool back_complete;
-    int turn_offset;
 
 } Movement;
 
@@ -55,7 +51,7 @@ bool Movement_IsComplete(void);
 void Movement_SetMove(float target_heading, float distance_quarter_inches, bool should_draw);
 void Movement_TurnTo(float heading);
 void Movement_Forward(float distance_cm);
-void Movement_PrintStatus(void) ;
+void Movement_PrintStatus(void);
 
 bool ExecuteSquareTest(Movement *movement);
 

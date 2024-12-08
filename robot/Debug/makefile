@@ -60,8 +60,8 @@ all: main-build
 main-build: robot.elf secondary-outputs
 
 # Tool invocations
-robot.elf robot.map: $(OBJS) $(USER_OBJS) /Users/sharmadhavs/dev/projects/drawbot/robot/STM32F401RETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "robot.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/Users/sharmadhavs/dev/projects/drawbot/robot/STM32F401RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="robot.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
+robot.elf robot.map: $(OBJS) $(USER_OBJS) /Users/Wimbazu/STM32CubeIDE/workspace_1.16.0/373_project/robot/STM32F401RETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "robot.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/Users/Wimbazu/STM32CubeIDE/workspace_1.16.0/373_project/robot/STM32F401RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="robot.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

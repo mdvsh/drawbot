@@ -16,8 +16,10 @@ void servo_init(void)
 
 void servo_set_position(int16_t angle)
 {
-    if(angle < -90) angle = -90;
-    if(angle > 90) angle = 90;
+    if (angle < -90)
+        angle = -90;
+    if (angle > 90)
+        angle = 90;
 
     // map -90 to +90 to 500-2400 mus;
     uint32_t pulse = 1450 + (angle * 950 / 90);
@@ -30,16 +32,15 @@ void servo_set_position_smooth(int16_t target_angle, uint32_t step_delay_ms)
     static int16_t current_angle = 0;
     const int16_t STEP_SIZE = 2;
 
-    while(current_angle != target_angle)
-    {
-        if(current_angle < target_angle) {
+    while (current_angle != target_angle) {
+        if (current_angle < target_angle) {
             current_angle += STEP_SIZE;
-            if(current_angle > target_angle) {
+            if (current_angle > target_angle) {
                 current_angle = target_angle;
             }
         } else {
             current_angle -= STEP_SIZE;
-            if(current_angle < target_angle) {
+            if (current_angle < target_angle) {
                 current_angle = target_angle;
             }
         }
@@ -51,9 +52,9 @@ void servo_set_position_smooth(int16_t target_angle, uint32_t step_delay_ms)
 
 void pen_control(uint8_t up)
 {
-    if(up) {
+    if (up) {
         servo_set_position_smooth(80, 20);
     } else {
-        servo_set_position_smooth(31, 20);
+        servo_set_position_smooth(15, 20);
     }
 }
